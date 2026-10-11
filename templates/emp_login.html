@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ShiftWise — Employee Sign in</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="login-wrap">
+  <form method="post" class="login-box" style="max-width:440px">
+    <div class="brand"><div class="logo">🗓</div><div><b>ShiftWise</b><span class="ver">EMPLOYEE</span><small>Your shifts, your availability</small></div></div>
+    <h2 style="margin:16px 0 4px">Welcome back</h2>
+    <div class="muted">Select your name to open your personal portal.</div>
+    {% with msgs = get_flashed_messages(with_categories=true) %}{% for c, m in msgs %}<div class="flash {{ c }}" style="margin-top:12px">{{ m }}</div>{% endfor %}{% endwith %}
+    <label class="f" style="margin-top:18px">Your name
+      <select name="employee_id" required>{% for x in emps %}<option value="{{ x.id }}">{{ x.name }} — {{ x.role }}</option>{% endfor %}</select></label>
+    <button class="btn p full" style="margin-top:16px;padding:12px">Open my portal →</button>
+    <div class="muted" style="text-align:center;margin-top:14px">Manager? <a href="{{ url_for('login') }}" style="color:var(--blue);font-weight:600">Sign in here</a></div>
+    <div class="muted" style="text-align:center;margin-top:8px;font-size:12px">Team CODESPRINT · CBC052</div>
+  </form>
+</div>
+</body>
+</html>

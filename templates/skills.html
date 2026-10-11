@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Skill Matrix{% endblock %}
+{% block page %}Skill Matrix{% endblock %}
+{% block content %}
+<div class="panel"><h3>Skill Coverage Matrix (Competency Heatmap)</h3>
+<div class="muted">Assigned staff holding each skill per shift — spot single points of failure. Blue outline = skill the shift requires.</div>
+<div class="chips" style="margin-top:12px"><span class="cell c0">0</span> Critical Gap <span class="cell c1">1</span> Single Point <span class="cell c2">2+</span> Resilient</div></div>
+<div class="tw"><table class="matrix"><thead><tr><th>Shift & Dept</th><th>Time</th>{% for k in skills %}<th>{{ k }}</th>{% endfor %}</tr></thead>
+{% for r in rows %}<tr><td><b>{{ r.s.title }}</b><div class="muted">{{ r.s.dept }}</div></td><td class="mono">{{ r.s.shift_date|fd }} {{ r.s.start_time }}–{{ r.s.end_time }}</td>
+{% for c in r.cells %}<td><span class="cell {{ c.cls }} {% if c.req %}req{% endif %}">{{ c.n }}</span></td>{% endfor %}</tr>{% endfor %}</table></div>
+{% endblock %}

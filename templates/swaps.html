@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Shift Swaps{% endblock %}
+{% block page %}Shift Swaps{% endblock %}
+{% block content %}
+<div class="panel"><h3>Peer-to-peer swap workflow</h3>
+  <div class="muted">1) Employee asks a colleague → 2) Colleague accepts or declines → 3) Manager confirms (rules engine re-checks) → roster updates.</div></div>
+
+<div class="pipe">
+  <div class="pstep a"><div class="n">{{ cnt.awaiting }}</div><div class="muted">Waiting for colleague</div></div>
+  <div class="pstep b"><div class="n">{{ cnt.accepted }}</div><div class="muted">Awaiting manager approval</div></div>
+  <div class="pstep c"><div class="n">{{ cnt.done }}</div><div class="muted">Completed / closed</div></div>
+</div>
+
+<div class="tw"><table><thead><tr><th>Shift</th><th>Requested by</th><th>Asked colleague</th><th>Stage</th><th>Manager action</th></tr></thead>
+{% for i in items %}<tr><td><b>{{ i.shift.title if i.shift }}</b>{% if i.shift %}<div class="muted">{{ i.shift.shift_date|fd }} {{ i.shift.start_time }}–{{ i.shift.end_time }}</div>{% endif %}{% if i.note %}<div class="muted">“{{ i.note }}”</div>{% endif %}</td>
+<td>{{ i.frm.name if i.frm }}</td><td>{{ i.to.name if i.to }}</td>
+<td><span class="badge {{ i.cls }}">{{ i.stage }}</span></td>
+<td>{% if i.status == 'accepted' %}
+<form method="post" action="{{ url_for('swap_action', wid=i.id, action='approve') }}" class="inline"><button class="btn s p">Approve</button></form>
+<form method="post" action="{{ url_for('swap_action', wid=i.id, action='reject') }}" class="inline"><button class="btn s d">Reject</button></form>
+{% elif i.status == 'awaiting' %}<span class="muted">Not yet accepted by colleague</span>
+{% else %}<span class="muted">Closed</span>{% endif %}</td></tr>
+{% else %}<tr><td colspan="5" class="muted">No swap requests yet. Employees request swaps from their portal (sign in as Employee).</td></tr>{% endfor %}</table></div>
+<p class="muted" style="margin:10px 0 24px">Approval re-runs the rules engine — blocked if the new person is unavailable, unskilled, overlapping, or over rest/hour limits.</p>
+
+<div class="row" id="inbox"><h3 class="sec-h">🔔 Notification log</h3>
+  <form method="post" action="{{ url_for('notifications_read') }}"><button class="btn s">Mark all read</button></form></div>
+{% for n in notifs %}
+<div class="alert" style="{% if not n.is_read %}border-left:4px solid var(--blue){% endif %}">
+  <div class="row"><b>{{ n.title }} → {{ n.name or 'Employee' }}</b><span class="muted">{{ n.created }} · {{ {'app':'In-app','email':'Email','both':'In-app + Email'}[n.channel] }}</span></div>
+  <div class="muted">{{ n.body }}</div></div>
+{% else %}<div class="muted">No notifications yet.</div>{% endfor %}
+{% endblock %}

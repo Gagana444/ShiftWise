@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Conflicts & Gaps{% endblock %}
+{% block page %}Conflicts & Staffing Gaps{% endblock %}
+{% block content %}
+<div class="panel row">
+  <div><h3>Rules engine — 12 checks on every assignment</h3>
+    <div class="muted">Double booking · 11h rest · weekly overtime · >12h/day · 6+ consecutive days · skill · expired cert · cert expiring · absent · on leave · unavailable day · night load</div></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <form method="post" action="{{ url_for('demo_conflicts') }}"><button class="btn d">⚠ Inject demo conflicts</button></form>
+    <form method="post" action="{{ url_for('repair') }}"><input type="hidden" name="next" value="/conflicts"><button class="btn p">✨ One-Click Repair</button></form>
+  </div>
+</div>
+
+{% if kinds %}<div class="kinds">{% for k, n in kinds.items() %}<span class="kind">{{ k }}<b>{{ n }}</b></span>{% endfor %}</div>{% endif %}
+
+<h3 class="day-h">Conflicts ({{ hard_n }} breaches · {{ conflicts|length - hard_n }} advisory)</h3>
+<div class="tw"><table><thead><tr><th>Type</th><th>Severity</th><th>Employee</th><th>Shift</th><th>Issue</th><th></th></tr></thead>
+{% for c in conflicts %}<tr>
+<td><b>{{ c.label }}</b></td>
+<td><span class="badge sev-{{ c.severity }}">{{ c.severity|upper }}</span></td>
+<td><b>{{ c.emp.name }}</b><div class="muted">{{ c.emp.role }}</div></td>
+<td>{{ c.shift.title }}<div class="muted">{{ c.shift.shift_date|fd }} {{ c.shift.start_time }}–{{ c.shift.end_time }}</div></td>
+<td>{{ c.msg }}</td>
+<td>{% if not c.soft %}<form method="post" action="{{ url_for('unassign', sid=c.sid, eid=c.eid) }}"><input type="hidden" name="next" value="/conflicts"><button class="btn s d">Unassign</button></form>{% else %}<span class="muted">Advisory</span>{% endif %}</td></tr>
+{% else %}<tr><td colspan="6"><div class="ok-box">🛡<b>100% Conflict-Free</b></div></td></tr>{% endfor %}</table></div>
+
+<h3 class="day-h">Staffing Gaps ({{ gaps|length }})</h3>
+<div class="tw"><table><thead><tr><th>Shift</th><th>Missing</th><th>Candidates to fill</th></tr></thead>
+{% for g in gaps %}<tr><td><b>{{ g.shift.title }}</b><div class="muted">{{ g.shift.dept }} · {{ g.shift.shift_date|fd }} · needs {{ g.shift.skill or 'Any' }}</div></td>
+<td><span class="badge bad">{{ g.missing }}</span></td>
+<td>{% for c in g.candidates %}<form method="post" action="{{ url_for('assign', sid=g.shift.id) }}" class="inline"><input type="hidden" name="employee_id" value="{{ c.emp.id }}"><input type="hidden" name="next" value="/conflicts"><button class="btn s lt">+ {{ c.emp.name }}</button></form> {% else %}<span class="muted">None eligible — renew cert / train / swap</span>{% endfor %}</td></tr>
+{% else %}<tr><td colspan="3"><div class="ok-box">✅<b>No gaps</b></div></td></tr>{% endfor %}</table></div>
+{% endblock %}

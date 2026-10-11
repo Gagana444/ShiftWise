@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Live Dashboard{% endblock %}
+{% block page %}Live Dashboard{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="eyebrow">● OPERATIONS TELEMETRY • LIVE SCHEDULE FEED</div>
+  <h1>{{ biz }} Workforce Command</h1>
+  <p>Shift scheduling with availability, skill and working-hour checks — staffing-gap alerts, 12-rule conflict detection, burnout warnings and one-click repair.</p>
+  <div class="pills"><span class="pill">{{ st.units }} Active Departments</span><span class="pill">{{ st.coverage }}% Shift Coverage</span><span class="pill">11h Rest Rule Enforced</span><span class="pill">{{ st.total_emps }} Employees</span></div>
+  <div class="actions">
+    <form method="post" action="{{ url_for('auto_assign_all') }}"><input type="hidden" name="next" value="/"><button class="btn">✨ Run Auto-Assign</button></form>
+    <a class="btn" href="{{ url_for('export') }}">⬇ Export Roster (CSV)</a>
+    <a class="btn" href="{{ url_for('schedule') }}">📋 Publish Schedule</a>
+  </div>
+</section>
+
+<div class="stats">
+  <div class="stat"><h4>Resilience Index</h4>
+    <div class="row"><div class="donut {{ st.res_cls }}" style="--p:{{ st.resilience }}"><span>{{ st.resilience }}%</span></div>
+    <div class="muted" style="text-align:right"><b class="{{ st.res_cls }}-t">{{ st.res_label }}</b><br>Buffer: {{ st.buffer }}%<br>Skills: {{ st.skills_pct }}%<br>Rules: {{ st.rules }}%</div></div>
+    <p><a href="{{ url_for('simulator') }}" style="color:var(--blue);font-weight:600">Stress Simulator →</a></p></div>
+  <div class="stat"><h4>Staffing Shortages</h4><div class="big">{{ st.gap_slots }}<small>unfilled slots</small></div>
+    <p>{{ st.filled }} / {{ st.req }} slots covered ({{ st.coverage }}%)</p>
+    <form method="post" action="{{ url_for('auto_assign_all') }}"><input type="hidden" name="next" value="/"><button class="btn lt" style="width:100%;justify-content:center">✨ Auto-Assign All</button></form></div>
+  <div class="stat"><h4>Active Conflicts</h4><div class="big {{ 'high-t' if st.hard_n else 'ok-t' }}">{{ st.hard_n }}<small>rule breaches</small></div>
+    <p>{{ st.soft_n }} advisory warning(s) · 12 rules monitored</p>
+    <a class="btn d" style="width:100%;justify-content:center" href="{{ url_for('conflicts') }}">View Conflicts</a></div>
+  <div class="stat"><h4>Active Staff Pool</h4><div class="big">{{ st.active }}<small>active / {{ st.total_emps }}</small></div>
+    <p>{{ st.reserve }} on-call reserve(s) available</p>
+    <a class="btn lt" style="width:100%;justify-content:center" href="{{ url_for('employees') }}">View Staff Directory</a></div>
+  <div class="stat"><h4>Burnout Risk</h4><div class="big">{{ st.burnout|length }}<small>at fatigue risk</small></div>
+    <p>Rule: 11h mandatory rest enforced</p>
+    <a class="btn" style="width:100%;justify-content:center" href="{{ url_for('skills') }}">Inspect Skill Matrix</a></div>
+</div>
+
+<div class="grid2">
+  <div>
+    <div class="card"><h3>Shift Coverage by Day</h3><div class="muted">Filled slots ÷ required slots</div>
+      <div class="bars">{% for d in st.days %}
+        <div class="bcol"><div class="bval">{{ d.pct }}%</div>
+          <div class="btrack"><div class="bfill {{ 'ok' if d.pct >= 100 else ('mid' if d.pct >= 60 else 'high') }}" style="height:{{ d.pct }}%"></div></div>
+          <div class="blab">{{ d.label }}</div><div class="muted" style="font-size:11px">{{ d.filled }}/{{ d.req }}</div></div>
+      {% endfor %}</div></div>
+
+    <div class="card">
+      <div class="row"><div><h3>Real-Time Staffing Shortage Alerts</h3><div class="muted">{{ st.gaps|length }} shift(s) understaffed</div></div>
+      <form method="post" action="{{ url_for('auto_assign_all') }}"><input type="hidden" name="next" value="/"><button class="btn p s">Auto-Fill Gaps</button></form></div>
+      {% for g in st.gaps %}
+      <div class="alert"><div class="row"><div><h5>{{ g.shift.title }} <span class="badge bad">MISSING {{ g.missing }}</span></h5>
+        <div class="muted">{{ g.shift.dept }} · {{ g.shift.shift_date|fd }} {{ g.shift.start_time }}–{{ g.shift.end_time }} · Needs {{ g.shift.skill or 'Any' }}</div></div>
+        <a class="btn s" href="{{ url_for('shifts') }}#shift-{{ g.shift.id }}">Find Replacement</a></div>
+        <div class="chips">{% for c in g.candidates %}
+          <form method="post" action="{{ url_for('assign', sid=g.shift.id) }}" class="inline"><input type="hidden" name="employee_id" value="{{ c.emp.id }}"><input type="hidden" name="next" value="/"><button class="btn s lt">+ {{ c.emp.name }}</button></form>
+          {% else %}<span class="muted">No eligible staff — renew certification in Training Academy, or request a swap.</span>{% endfor %}</div></div>
+      {% else %}<div class="ok-box">✅<b>All shifts fully staffed</b></div>{% endfor %}
+    </div>
+  </div>
+
+  <div>
+    <div class="card"><h3>Conflict & Compliance Monitor</h3><div class="muted">{{ st.hard_n }} breach(es) · {{ st.soft_n }} advisory</div>
+      {% for c in st.conflicts[:5] %}<div class="alert"><span class="badge sev-{{ c.severity }}">{{ c.label|upper }}</span> <b>{{ c.emp.name }}</b><div class="muted">{{ c.msg }} — {{ c.shift.title }}</div></div>
+      {% else %}<div class="ok-box">🛡<b>100% Conflict-Free Schedule!</b><span class="muted">Zero overlaps, rest breaches or uncertified assignments.</span></div>{% endfor %}
+      {% if st.conflicts|length > 5 %}<p style="margin-top:10px"><a href="{{ url_for('conflicts') }}" style="color:var(--blue);font-weight:600">View all {{ st.conflicts|length }} →</a></p>{% endif %}</div>
+
+    <div class="card"><h3>Department Staffing</h3>
+      {% for d in st.depts %}<div class="drow"><div class="wl"><span>{{ d.label }}</span><b>{{ d.filled }}/{{ d.req }} · {{ d.pct }}%</b></div>
+        <div class="bar {{ 'ok' if d.pct >= 100 else ('mid' if d.pct >= 60 else 'high') }}"><i style="width:{{ d.pct }}%"></i></div></div>{% endfor %}</div>
+
+    <div class="card"><h3>Burnout Watch</h3>
+      {% for b in st.burnout %}<div class="alert"><b>{{ b.emp.name }}</b> <span class="badge bad">{{ b.fat.idx }}%</span><div class="muted">{{ b.fat.peak }}h in busiest week (limit {{ b.emp.max_hours }}h)</div></div>
+      {% else %}<div class="muted" style="margin-top:8px">No one is at fatigue risk.</div>{% endfor %}</div>
+
+    <div class="card demo"><h3>🎬 Live Demo Controls</h3><div class="muted">Create realistic rule violations, then fix them with one click.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        <form method="post" action="{{ url_for('demo_conflicts') }}"><button class="btn d">⚠ Inject demo conflicts</button></form>
+        <form method="post" action="{{ url_for('repair') }}"><input type="hidden" name="next" value="/"><button class="btn p">✨ One-Click Repair</button></form></div></div>
+  </div>
+</div>
+{% endblock %}

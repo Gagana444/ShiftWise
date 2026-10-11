@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}My Portal{% endblock %}
+{% block page %}My Portal{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="eyebrow">● EMPLOYEE PORTAL</div>
+  <h1>Hi, {{ me.name }}</h1>
+  <p>{{ me.role }} · {{ me.dept }} · {{ biz }}</p>
+  <div class="pills"><span class="pill">{{ mine|length }} shift(s) assigned</span><span class="pill">{{ hrs }}h booked</span><span class="pill">Fatigue: {{ fat.idx }}% ({{ fat.label }})</span></div>
+  <div class="actions">
+    <button type="button" class="btn" data-open="m-abs">🚫 Mark me absent</button>
+    <button type="button" class="btn" onclick="preSwap('')">⇄ Ask a colleague to swap</button>
+  </div>
+</section>
+
+{% set pending_in = incoming|selectattr('status','equalto','awaiting')|list %}
+{% if pending_in %}
+<div class="card" style="border:2px solid #fbbf24;background:#fffbeb">
+  <h3>🔔 Swap requests waiting for your answer ({{ pending_in|length }})</h3>
+  {% for i in pending_in %}
+  <div class="alert"><div class="row"><div><b>{{ i.frm.name }}</b> wants you to take <b>{{ i.shift.title }}</b>
+    <div class="muted">{{ i.shift.shift_date|fd }} · {{ i.shift.start_time }}–{{ i.shift.end_time }}{% if i.note %} · “{{ i.note }}”{% endif %}</div></div>
+    <div><form method="post" action="{{ url_for('portal_swap_action', wid=i.id, action='accept') }}" class="inline"><button class="btn s g">✔ Accept</button></form>
+    <form method="post" action="{{ url_for('portal_swap_action', wid=i.id, action='decline') }}" class="inline"><button class="btn s d">✕ Decline</button></form></div></div></div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="grid2">
+  <div>
+    <h3 class="sec-h">My upcoming shifts</h3>
+    <div class="tw"><table><thead><tr><th>Shift</th><th>Date</th><th>Time</th><th>Skill</th><th></th></tr></thead>
+    {% for s in mine %}<tr><td><b>{{ s.title }}</b><div class="muted">{{ s.dept }}</div></td><td>{{ s.shift_date|fd }}</td><td class="mono">{{ s.start_time }}–{{ s.end_time }}</td><td>{{ s.skill or 'Any' }}</td>
+    <td><button type="button" class="btn s lt" onclick="preSwap('{{ s.id }}:{{ me.id }}')">⇄ Swap</button></td></tr>
+    {% else %}<tr><td colspan="5" class="muted">No shifts assigned yet.</td></tr>{% endfor %}</table></div>
+
+    <h3 class="sec-h" style="margin-top:20px">Swaps I requested</h3>
+    <div class="tw"><table><thead><tr><th>Shift</th><th>Asked</th><th>Stage</th></tr></thead>
+    {% for i in outgoing %}<tr><td>{{ i.shift.title if i.shift }}</td><td>{{ i.to.name if i.to }}</td><td><span class="badge {{ i.cls }}">{{ i.stage }}</span></td></tr>
+    {% else %}<tr><td colspan="3" class="muted">No swap requests.</td></tr>{% endfor %}</table></div>
+
+    <h3 class="sec-h" style="margin-top:20px">Requests I received</h3>
+    <div class="tw"><table><thead><tr><th>Shift</th><th>From</th><th>Stage</th></tr></thead>
+    {% for i in incoming %}<tr><td>{{ i.shift.title if i.shift }}</td><td>{{ i.frm.name if i.frm }}</td><td><span class="badge {{ i.cls }}">{{ i.stage }}</span></td></tr>
+    {% else %}<tr><td colspan="3" class="muted">Nothing received.</td></tr>{% endfor %}</table></div>
+
+    <h3 class="sec-h" style="margin-top:20px">My absences</h3>
+    {% for a in myabs %}<div class="alert">{{ a.absent_date|fd }} · <span class="badge sev-warning">{{ a.reason }}</span></div>
+    {% else %}<div class="muted">None recorded.</div>{% endfor %}
+  </div>
+
+  <div>
+    <div class="card">
+      <h3>My availability & skills</h3>
+      <div class="muted">The scheduler only assigns you on the days and skills you select.</div>
+      <form method="post" action="{{ url_for('portal_avail') }}" style="display:grid;gap:12px;margin-top:12px">
+        <div class="f">Available days<div class="checks">{% for d in DAYS %}<label><input type="checkbox" name="days" value="{{ d }}" {% if d in me.day_list %}checked{% endif %}>{{ d }}</label>{% endfor %}</div></div>
+        <div class="f">My skills<div class="checks">{% for k in SKILLS %}<label><input type="checkbox" name="skills" value="{{ k }}" {% if k in me.skill_list %}checked{% endif %}>{{ k }}</label>{% endfor %}</div></div>
+        <button class="btn p">Save availability</button>
+      </form>
+    </div>
+
+    <div class="card" id="inbox">
+      <div class="row"><h3>🔔 My notifications</h3>
+        <form method="post" action="{{ url_for('portal_read') }}"><button class="btn s">Mark all read</button></form></div>
+      {% for n in notifs %}
+      <div class="alert" style="{% if not n.is_read %}border-left:4px solid var(--blue){% endif %}">
+        <b>{{ n.title }}</b><div class="muted">{{ n.body }}</div><div class="muted">{{ n.created }}</div></div>
+      {% else %}<div class="muted" style="margin-top:8px">No notifications.</div>{% endfor %}
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="m-abs"><div class="modal-box">
+  <div class="modal-h"><h3>Mark myself absent</h3><button type="button" class="x" data-close>✕</button></div>
+  <form method="post" action="{{ url_for('portal_absent') }}" class="mgrid">
+    <label class="f full">Date<input type="date" name="absent_date" value="{{ today }}" required></label>
+    <div class="f full">Reason<div class="rchips">
+      <label><input type="radio" name="reason" value="Sick Leave" checked>🤒 Sick</label>
+      <label><input type="radio" name="reason" value="Casual Leave">🌴 Casual</label>
+      <label><input type="radio" name="reason" value="Emergency">🚨 Emergency</label>
+      <label><input type="radio" name="reason" value="Personal">👤 Personal</label></div></div>
+    <button class="btn p full">Submit — a replacement is auto-assigned</button>
+  </form>
+</div></div>
+
+<div class="modal" id="m-swap"><div class="modal-box">
+  <div class="modal-h"><h3>Ask a colleague to take my shift</h3><button type="button" class="x" data-close>✕</button></div>
+  <form method="post" action="{{ url_for('portal_swap') }}" class="mgrid">
+    <label class="f full">My shift to give up
+      <select name="assignment" id="sw-assign">{% for o in options %}<option value="{{ o.key }}">{{ o.label }}</option>{% endfor %}</select></label>
+    <label class="f full">Ask this colleague (only eligible people shown — same role first)
+      <select name="to_emp" id="sw-to"></select><span class="muted" id="sw-hint" style="color:var(--r)"></span></label>
+    <label class="f full">Note (optional)<input name="note" placeholder="e.g. Family function that day"></label>
+    <div class="f full">Notify colleague via<div class="rchips">
+      <label><input type="radio" name="channel" value="app" checked>🔔 In-app</label>
+      <label><input type="radio" name="channel" value="email">✉ Email</label>
+      <label><input type="radio" name="channel" value="both">Both</label></div></div>
+    <button class="btn p full">Send request to colleague</button>
+  </form>
+</div></div>
+
+<script>
+const ELIG = {{ elig|tojson }};
+const A = document.getElementById('sw-assign'), T = document.getElementById('sw-to'), H = document.getElementById('sw-hint');
+function fillTo(){
+  const l = ELIG[A.value] || [];
+  T.innerHTML = l.map(c => `<option value="${c.id}">${c.name} — ${c.role} (${c.tag})</option>`).join('');
+  H.textContent = l.length ? '' : 'No eligible colleague for this shift.';
+}
+function preSwap(key){
+  if (key) A.value = key;
+  fillTo();
+  document.getElementById('m-swap').classList.add('open');
+}
+A.onchange = fillTo; fillTo();
+</script>
+{% endblock %}

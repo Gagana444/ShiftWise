@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Absences{% endblock %}
+{% block page %}Absences & Reassignment{% endblock %}
+{% block content %}
+<div class="row" style="margin-bottom:14px">
+  <div><h3 class="sec-h" style="margin:0">Who's out — next 7 days</h3><div class="muted">Marking someone absent unassigns them and auto-assigns a replacement.</div></div>
+  <button type="button" class="btn p" data-open="m-abs">🚫 Mark Absent</button>
+</div>
+
+<div class="week">
+{% for w in week %}
+  <div class="day {% if w.people %}has{% endif %}">
+    <small>{{ w.label|upper }}</small><div class="num">{{ w.num }}</div><small>{{ w.mon }}</small>
+    <div class="who">{% for p in w.people %}<span class="avatar" title="{{ p.name }} — {{ p.reason }}">{{ p.name[0] }}</span>{% else %}<span class="badge good">All present</span>{% endfor %}</div>
+  </div>
+{% endfor %}
+</div>
+
+<h3 class="sec-h">Quick mark — tap a person</h3>
+<div class="mini">
+{% for e in emps %}
+  <div class="minicard">
+    <div style="display:flex;align-items:center"><span class="avatar">{{ e.name[0] }}</span><div><b>{{ e.name }}</b><div class="muted">{{ e.role }}</div></div></div>
+    <button type="button" class="btn s d" data-open="m-abs" data-target="abs-emp" data-value="{{ e.id }}">Absent</button>
+  </div>
+{% endfor %}
+</div>
+
+<h3 class="sec-h">Absence log ({{ rows|length }})</h3>
+{% for r in rows %}
+<div class="abs-card">
+  <div style="display:flex;align-items:center"><span class="avatar">{{ r.name[0] }}</span><div><b>{{ r.name }}</b><div class="muted">{{ r.role }}</div></div></div>
+  <div><b>{{ r.absent_date|fd }}</b></div>
+  <span class="badge sev-warning">{{ r.reason or 'Unspecified' }}</span>
+  <form method="post" action="{{ url_for('absence_delete', aid=r.id) }}"><button class="btn s">Remove</button></form>
+</div>
+{% else %}<div class="card ok-box">🙌<b>No absences</b><span class="muted">Everyone is available.</span></div>{% endfor %}
+
+<div class="modal" id="m-abs"><div class="modal-box">
+  <div class="modal-h"><h3>Mark Absent</h3><button type="button" class="x" data-close>✕</button></div>
+  <form method="post" action="{{ url_for('absence_add') }}" class="mgrid">
+    <label class="f">Employee<select name="employee_id" id="abs-emp">{% for e in emps %}<option value="{{ e.id }}">{{ e.name }} — {{ e.role }}</option>{% endfor %}</select></label>
+    <label class="f">Date<input type="date" name="absent_date" value="{{ today }}" required></label>
+    <div class="f full">Reason<div class="rchips">
+      <label><input type="radio" name="reason" value="Sick Leave" checked>🤒 Sick</label>
+      <label><input type="radio" name="reason" value="Casual Leave">🌴 Casual</label>
+      <label><input type="radio" name="reason" value="Emergency">🚨 Emergency</label>
+      <label><input type="radio" name="reason" value="Personal">👤 Personal</label></div></div>
+    <button class="btn p full">Record Absence & Reassign</button>
+  </form>
+</div></div>
+{% endblock %}

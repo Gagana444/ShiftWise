@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Stress Simulator{% endblock %}
+{% block page %}Stress Simulator{% endblock %}
+{% block content %}
+<div class="panel"><div class="tag">DISASTER PREPAREDNESS SANDBOX</div>
+<h2 style="margin:10px 0 4px">Demand Surge & Absence Simulator</h2>
+<div class="muted">Stress-test the roster (nothing is saved). Current baseline coverage: <b>{{ base }}%</b></div></div>
+<form method="post" class="panel"><h3 style="margin-bottom:12px">Select scenario</h3>
+<div class="scen">
+  <label><input type="radio" name="scenario" value="flu" {% if chosen=='flu' %}checked{% endif %}><div><b>Seasonal Rush / Flu Outbreak</b><span class="muted">3 busiest staff call in sick at once.</span></div></label>
+  <label><input type="radio" name="scenario" value="surge" {% if chosen=='surge' %}checked{% endif %}><div><b>Demand Surge (+50%)</b><span class="muted">Every shift needs 50% more people.</span></div></label>
+  <label><input type="radio" name="scenario" value="lead" {% if chosen=='lead' %}checked{% endif %}><div><b>Key Supervisor / Lead Absence</b><span class="muted">Busiest supervisor unavailable for 48 hours.</span></div></label>
+</div>
+<button class="btn p" style="margin-top:16px">▷ Run Stress Simulation</button></form>
+{% if result %}
+<div class="panel"><h3>{{ result.title }} — <span class="{{ result.cls }}-t">{{ result.verdict }}</span></h3>
+<div class="stats" style="margin-top:14px">
+  <div class="stat"><h4>Before</h4><div class="big">{{ result.before }}%</div></div>
+  <div class="stat"><h4>After shock</h4><div class="big high-t">{{ result.after }}%</div><p>{{ result.short_after }} slot(s) short</p></div>
+  <div class="stat"><h4>After auto-reallocation</h4><div class="big {{ result.cls }}-t">{{ result.final }}%</div><p>{{ result.recovered }} reassigned ({{ result.reserve_used }} from reserve)</p></div></div>
+{% if result.victims %}<p><b>Unavailable:</b> {{ result.victims|join(', ') }}</p>{% endif %}
+{% if result.unresolved %}<p style="margin-top:8px"><b>Still uncovered:</b></p><div class="chips">{% for t, m in result.unresolved %}<span class="chip">{{ t }} (−{{ m }})</span>{% endfor %}</div>
+{% else %}<p class="ok-t" style="margin-top:8px"><b>Fully recoverable with current staff.</b></p>{% endif %}</div>
+{% endif %}
+{% endblock %}

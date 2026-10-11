@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Training Academy{% endblock %}
+{% block page %}Training Academy{% endblock %}
+{% block content %}
+<div class="panel"><h3>Skills upgrade & certification</h3><div class="muted">Recommendations are generated from each employee's skill gaps vs. what their department's shifts require, plus expired / expiring certifications.</div></div>
+<div class="tw"><table><thead><tr><th>Employee</th><th>Skill gaps</th><th>Expired certs</th><th>Expiring ≤30d</th></tr></thead>
+{% for g in gaps %}<tr><td><b>{{ g.emp.name }}</b><div class="muted">{{ g.emp.role }} · {{ g.emp.dept }}</div></td>
+<td>{% for k in g.missing %}<form method="post" action="{{ url_for('training_complete') }}" class="inline"><input type="hidden" name="employee_id" value="{{ g.emp.id }}"><input type="hidden" name="skill" value="{{ k }}"><button class="btn s lt">🎓 Train: {{ k }}</button></form> {% else %}—{% endfor %}</td>
+<td>{% for k in g.expired %}<form method="post" action="{{ url_for('training_complete') }}" class="inline"><input type="hidden" name="employee_id" value="{{ g.emp.id }}"><input type="hidden" name="skill" value="{{ k }}"><button class="btn s d">Renew: {{ k }}</button></form> {% else %}—{% endfor %}</td>
+<td>{% for k in g.expiring %}<form method="post" action="{{ url_for('training_complete') }}" class="inline"><input type="hidden" name="employee_id" value="{{ g.emp.id }}"><input type="hidden" name="skill" value="{{ k }}"><button class="btn s">Renew: {{ k }}</button></form> {% else %}—{% endfor %}</td></tr>
+{% else %}<tr><td colspan="4"><div class="ok-box">✅<b>No skill gaps</b></div></td></tr>{% endfor %}</table></div>
+{% endblock %}

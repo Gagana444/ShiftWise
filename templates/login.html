@@ -1,0 +1,340 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ShiftWise — Sign in</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: 'Inter', sans-serif;
+            background:
+                radial-gradient(ellipse at 20% 10%, #252c57 0%, transparent 48%),
+                linear-gradient(135deg, #101329, #080d19 65%, #092331);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 30px 18px;
+        }
+
+        .login-wrap {
+            width: 100%;
+            max-width: 880px;
+        }
+
+        .login-box {
+            background: #fff;
+            width: 100%;
+            padding: 44px 42px;
+            border-radius: 23px;
+            box-shadow: 0 25px 80px #00000020;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .brand .logo {
+            width: 46px;
+            height: 46px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #111629;
+            color: white;
+            border-radius: 13px;
+            font-size: 23px;
+            flex-shrink: 0;
+        }
+
+        .brand b {
+            font-size: 21px;
+            color: #111827;
+        }
+
+        .ver {
+            display: inline-block;
+            margin-left: 6px;
+            padding: 3px 8px;
+            border: 1px solid #c8d2ff;
+            background: #f0f3ff;
+            color: #5145ed;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        .brand small {
+            display: block;
+            color: #64748b;
+            margin-top: 5px;
+            font-size: 14px;
+        }
+
+        .login-box h2 {
+            margin: 27px 0 9px !important;
+            color: #111827;
+            font-size: 28px;
+            letter-spacing: -0.8px;
+        }
+
+        .login-box .muted {
+            color: #64748b;
+            line-height: 1.6;
+            font-size: 15px;
+        }
+
+        .sector-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            margin: 25px 0 23px;
+        }
+
+        .sector {
+            position: relative;
+            display: block;
+            cursor: pointer;
+        }
+
+        .sector input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .sector > div {
+            min-height: 112px;
+            border: 1px solid #dfe4ed;
+            border-radius: 17px;
+            padding: 15px 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 7px;
+            text-align: center;
+            transition: 0.18s ease;
+        }
+
+        .sector > div b {
+            color: #253047;
+            font-size: 14px;
+        }
+
+        .sector .s-ico {
+            font-size: 24px;
+        }
+
+        .sector .muted {
+            font-size: 12px !important;
+        }
+
+        .sector input:checked + div {
+            border: 2px solid #5546ff;
+            background: #eef1ff;
+            padding: 14px 9px;
+        }
+
+        .sector input:focus-visible + div {
+            outline: 3px solid #a5b4fc;
+            outline-offset: 3px;
+        }
+
+        .login-box .mgrid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .login-box .f {
+            display: flex;
+            flex-direction: column;
+            gap: 9px;
+            color: #334155;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .login-box .f input {
+            width: 100%;
+            min-width: 0;
+            height: 52px;
+            border: 1px solid #cbd5e1;
+            border-radius: 11px;
+            padding: 0 15px;
+            font: inherit;
+            font-size: 16px;
+            outline: none;
+            background: #fff;
+            color: #111827;
+        }
+
+        .login-box .f input::placeholder {
+            color: #9aa4b5;
+        }
+
+        .login-box .f input:focus {
+            border-color: #5546ff;
+            box-shadow: 0 0 0 3px #5546ff16;
+        }
+
+        .login-box .btn.p.full {
+            width: 100%;
+            min-height: 59px;
+            margin-top: 22px !important;
+            border: 0;
+            border-radius: 11px;
+            background: #5145e8;
+            color: #fff;
+            font-family: inherit;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 3px 5px #5145e830;
+            transition: background 0.2s, transform 0.2s;
+        }
+
+        .login-box .btn.p.full:hover {
+            background: #4035cf;
+            transform: translateY(-1px);
+        }
+
+        .employee-link {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            color: #5145ff;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .employee-link:hover {
+            text-decoration: underline;
+        }
+
+        .team-credit {
+            text-align: center;
+            margin-top: 21px;
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        @media (max-width: 600px) {
+            .login-box {
+                padding: 28px 20px;
+                border-radius: 18px;
+            }
+
+            .login-box h2 {
+                font-size: 24px;
+            }
+
+            .sector-grid {
+                gap: 7px;
+            }
+
+            .sector > div {
+                padding: 12px 5px;
+            }
+
+            .sector > div b {
+                font-size: 12px;
+            }
+
+            .login-box .mgrid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<div class="login-wrap">
+    <form method="post" class="login-box">
+
+        <div class="brand" style="margin-bottom:6px">
+            <div class="logo">🗓</div>
+            <div>
+                <b>ShiftWise</b>
+                <span class="ver">V2.5</span>
+                <small>Smart Shift Scheduling</small>
+            </div>
+        </div>
+
+        <h2>Sign in to your workspace</h2>
+
+        <div class="muted">
+            Choose your sector. Departments, skills and staff adapt automatically.
+        </div>
+
+        {% with msgs = get_flashed_messages(with_categories=true) %}
+            {% for c, m in msgs %}
+                <div class="flash {{ c }}" style="margin-top:12px">
+                    {{ m }}
+                </div>
+            {% endfor %}
+        {% endwith %}
+
+        <div class="sector-grid">
+            {% for key, s in sectors.items() %}
+                <label class="sector">
+                    <input type="radio" name="sector"
+                           value="{{ key }}"
+                           {% if key == current %}checked{% endif %}
+                           required>
+
+                    <div>
+                        <span class="s-ico">{{ s.icon }}</span>
+                        <b>{{ s.label }}</b>
+                        <span class="muted">{{ s.tag }}</span>
+                    </div>
+                </label>
+            {% endfor %}
+        </div>
+
+        <div class="mgrid" style="margin-top:6px">
+            <label class="f">
+                Your name
+                <input name="name"
+                       placeholder="e.g. Priya Nair"
+                       autocomplete="username"
+                       required>
+            </label>
+
+            <label class="f">
+                Password
+                <input type="password"
+                       name="password"
+                       placeholder="Any password (demo)"
+                       autocomplete="current-password">
+            </label>
+        </div>
+
+        <button type="submit" class="btn p full">
+            Sign in as Manager →
+        </button>
+
+        <a href="/employee" class="employee-link">
+            Employee? Sign in here →
+        </a>
+
+        <div class="team-credit">
+            Team CODESPRINT · CBC052 · Problem Statement 36
+        </div>
+
+    </form>
+</div>
+</body>
+</html>

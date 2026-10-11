@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ShiftWise — {% block title %}{% endblock %}</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<script src="{{ url_for('static', filename='extras.js') }}"></script>
+<body>
+{% macro item(ep, icon, label, badge=None) %}
+<a class="nav-item {% if request.endpoint == ep %}active{% endif %}" href="{{ url_for(ep) }}"><span>{{ icon }}</span>{{ label }}{% if badge %}<em>{{ badge }}</em>{% endif %}</a>
+{% endmacro %}
+<aside class="sidebar">
+  <div class="brand"><div class="logo">🗓</div><div><b>ShiftWise</b><span class="ver">V2.5</span><small>{{ sector.icon }} {{ sector.label }}</small></div></div>
+  <div class="user"><b>{{ manager }}</b><small>{{ mgr_role }}</small>
+    <div style="margin-top:6px"><a href="{{ url_for('logout') }}" style="color:var(--r);font-weight:600;font-size:12px">⎋ Sign Out</a></div></div>
+  {% if role == 'employee' %}
+    <div class="nav-h">MY WORKSPACE</div>
+    {{ item('portal','👤','My Portal', nav_notifs if nav_notifs else None) }}
+  {% else %}
+    <div class="nav-h">OPERATIONS</div>
+    {{ item('dashboard','▦','Live Dashboard') }}
+    {{ item('shifts','🗓','Schedule & Shifts', nav_shifts) }}
+    {{ item('employees','👥','Staff Directory') }}
+    {{ item('schedule','📋','Published Schedule') }}
+    {{ item('absences','🚫','Absences') }}
+    <div class="nav-h">INTELLIGENCE & RESILIENCE</div>
+    {{ item('skills','▤','Skill Matrix') }}
+    {{ item('conflicts','⚠','Conflicts & Gaps') }}
+    {{ item('simulator','▷','Stress Simulator') }}
+    {{ item('swaps','⇄','Shift Swaps', nav_swaps if nav_swaps else None) }}
+    <div class="nav-h">WORKFORCE DEVELOPMENT</div>
+    {{ item('training','🎓','Training Academy') }}
+    <a class="btn" style="width:100%;justify-content:center;margin-top:14px" href="{{ url_for('export') }}">⬇ Download Schedule CSV</a>
+  {% endif %}
+  <div class="status">ENGINE STATUS: <b style="color:#059669">● Online</b><br>Business: {{ biz }}<br>Team CODESPRINT · CBC052</div>
+</aside>
+<div class="main">
+  <header class="topbar">
+    <div><div class="crumb">{{ biz }}{% if role != 'employee' %} / All Departments{% endif %}</div><h2>{% block page %}{% endblock %}</h2></div>
+    <div class="tb-actions no-print">
+      {% if role == 'employee' %}
+        <a class="btn" href="{{ url_for('portal') }}#inbox">🔔{% if nav_notifs %} <em class="dot">{{ nav_notifs }}</em>{% endif %}</a>
+        <a class="btn d" href="{{ url_for('logout') }}">⎋ Sign Out</a>
+      {% else %}
+        <a class="btn" href="{{ url_for('swaps') }}#inbox" title="Notifications">🔔{% if nav_notifs %} <em class="dot">{{ nav_notifs }}</em>{% endif %}</a>
+        <button class="btn" onclick="window.print()">🖨 Print</button>
+        <form method="post" action="{{ url_for('reset') }}" class="inline" onsubmit="return confirm('Reset all demo data?')"><button class="btn">↻ Reset</button></form>
+        <form method="post" action="{{ url_for('repair') }}" class="inline"><input type="hidden" name="next" value="{{ request.path }}"><button class="btn p">✨ One-Click Schedule Repair</button></form>
+      {% endif %}
+    </div>
+  </header>
+  <div class="content">
+    {% with msgs = get_flashed_messages(with_categories=true) %}{% for c, m in msgs %}
+      {% if c == 'mail' %}<div class="flash ok">✉ Email draft ready — <a id="mailbtn" href="{{ m }}" style="color:var(--blue);font-weight:700">Open email app</a></div>
+      {% else %}<div class="flash {{ c }}">{{ m }}</div>{% endif %}
+    {% endfor %}{% endwith %}
+    {% block content %}{% endblock %}
+  </div>
+</div>
+<script>
+document.addEventListener('click', e => {
+  const o = e.target.closest('[data-open]');
+  if (o) {
+    const d = o.dataset;
+    if (d.target) document.getElementById(d.target).value = d.value;
+    if (d.form) document.getElementById(d.form).action = d.action;
+    if (d.labelTarget) document.getElementById(d.labelTarget).textContent = d.label;
+    document.getElementById(d.open).classList.add('open');
+    return;
+  }
+  if (e.target.closest('[data-close]') || e.target.classList.contains('modal')) {
+    const m = e.target.closest('.modal'); if (m) m.classList.remove('open');
+  }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal.open').forEach(m => m.classList.remove('open')); });
+const mb = document.getElementById('mailbtn'); if (mb) setTimeout(() => mb.click(), 400);
+</script>
+</body>
+</html>

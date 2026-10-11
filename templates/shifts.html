@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Schedule & Shifts{% endblock %}
+{% block page %}Schedule & Shifts{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="toolbar" style="margin:0">
+    <form method="get" class="toolbar" style="margin:0">
+      <label class="f">Department<select name="dept" onchange="this.form.submit()"><option>All</option>{% for d in DEPTS %}<option {% if d==dept %}selected{% endif %}>{{ d }}</option>{% endfor %}</select></label>
+      <label class="f">Status<select name="status" onchange="this.form.submit()"><option value="all">All Shifts ({{ total }})</option><option value="gaps" {% if status=='gaps' %}selected{% endif %}>Understaffed</option><option value="filled" {% if status=='filled' %}selected{% endif %}>Fully staffed</option></select></label>
+    </form>
+    <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+      <a class="btn" href="{{ url_for('export') }}">⬇ Export CSV</a>
+      <form method="post" action="{{ url_for('auto_assign_all') }}" class="inline"><input type="hidden" name="next" value="/shifts"><button class="btn lt">✨ Auto-Assign All</button></form>
+      <button type="button" class="btn p" data-open="m-shift">＋ Create Shift</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="m-shift"><div class="modal-box">
+  <div class="modal-h"><h3>Create Shift</h3><button type="button" class="x" data-close>✕</button></div>
+  <form method="post" action="{{ url_for('shift_create') }}" class="mgrid">
+    <label class="f full">Shift title<input name="title" required placeholder="e.g. Weekend Desk Cover"></label>
+    <label class="f">Department<select name="dept">{% for d in DEPTS %}<option>{{ d }}</option>{% endfor %}</select></label>
+    <label class="f">Date<input type="date" name="shift_date" value="{{ next_workday }}" required></label>
+    <label class="f">Start<input type="time" name="start_time" value="09:00" required></label>
+    <label class="f">End<input type="time" name="end_time" value="17:00" required></label>
+    <label class="f">Role (optional)<input name="role" placeholder="e.g. Cashier"></label>
+    <label class="f">Required skill<select name="skill"><option value="">Any</option>{% for k in SKILLS %}<option>{{ k }}</option>{% endfor %}</select></label>
+    <label class="f">Headcount<input type="number" name="headcount" min="1" value="1" required></label>
+    <label class="f">Priority<select name="priority"><option value="normal">Normal</option><option value="high">High</option><option value="surge">Surge</option></select></label>
+    <button class="btn p full">Create Shift</button>
+  </form>
+</div></div>
+
+<div class="cards">
+{% for r in rows %}{% set s = r.s %}
+<article class="shift {% if r.missing > 0 %}gap{% endif %}" id="shift-{{ s.id }}">
+  <div class="row"><span class="tag">{{ s.dept|upper }}</span>
+    <span><span class="badge pri-{{ s.priority }}">{{ s.priority|upper }}</span> <span class="badge {{ 'bad' if r.missing > 0 else 'good' }}">{{ r.assigned|length }}/{{ s.headcount }} Filled</span></span></div>
+  <h3>{{ s.title }}</h3>
+  <div class="meta">🕒 {{ s.shift_date|fd }}, {{ s.start_time }} – {{ s.end_time }} ({{ r.hours|round(1) }}h)</div>
+  <div class="meta">Requires: <b>{{ s.skill or 'Any skill' }}</b>{% if s.role %} · {{ s.role }}{% endif %}</div>
+  <div class="muted" style="margin-top:12px;font-weight:600">ASSIGNED ({{ r.assigned|length }})</div>
+  {% for e in r.assigned %}
+  <div class="person"><div><span class="avatar">{{ e.name[0] }}</span><b>{{ e.name }}</b> <small style="display:inline">· {{ e.role }}</small></div>
+    <form method="post" action="{{ url_for('unassign', sid=s.id, eid=e.id) }}"><button class="x" title="Remove">✕</button></form></div>
+  {% else %}<div class="muted">Nobody assigned yet.</div>{% endfor %}
+
+  {% if r.missing > 0 %}
+  <div class="muted" style="margin-top:12px;font-weight:600">SUGGESTED (ranked)</div>
+  {% if r.cands %}
+  <div class="chips">{% for c in r.cands %}
+    <form method="post" action="{{ url_for('assign', sid=s.id) }}" class="inline"><input type="hidden" name="employee_id" value="{{ c.emp.id }}"><button class="btn s lt" title="Score {{ c.score }} · {{ c.hours }}h booked">+ {{ c.emp.name }}</button></form>
+  {% endfor %}</div>
+  {% else %}
+  <div class="why">
+    <b>⚠ No eligible staff. Here is why each person is blocked:</b>
+    {% for w in r.why %}{% if w.reasons %}
+    <div class="why-row">
+      <div><b>{{ w.emp.name }}</b> <span class="muted">· {{ w.emp.role }}</span>
+        <div class="muted">{{ w.reasons|join(' · ') }}</div></div>
+      {% if w.fix_day and w.only_avail %}
+      <form method="post" action="{{ url_for('employee_add_day', eid=w.emp.id) }}" class="inline">
+        <input type="hidden" name="day" value="{{ w.fix_day }}"><input type="hidden" name="next" value="/shifts#shift-{{ s.id }}">
+        <button class="btn s g">Make available {{ w.fix_day }}</button></form>
+      {% endif %}
+    </div>
+    {% endif %}{% endfor %}
+    <div class="muted" style="margin-top:8px">Other options: train or renew a certification, ask for a swap, use Manage → Override rules, or turn on Emergency Mode.</div>
+  </div>
+  {% endif %}
+  {% endif %}
+
+  <details><summary>Manage / manual assign</summary>
+    <form method="post" action="{{ url_for('assign', sid=s.id) }}" style="display:grid;gap:8px;margin-top:10px">
+      <select name="employee_id">{% for e in r.free %}<option value="{{ e.id }}">{{ e.name }} — {{ e.role }}</option>{% endfor %}</select>
+      <label style="font-size:12px;display:flex;gap:6px;align-items:center;color:var(--r);font-weight:600"><input type="checkbox" name="override" value="1" style="padding:0"> Override rules (manager force — logs a conflict)</label>
+      <button class="btn s p">Assign</button></form>
+    <form method="post" action="{{ url_for('shift_delete', sid=s.id) }}" onsubmit="return confirm('Delete shift?')" style="margin-top:8px"><button class="btn s d">Delete shift</button></form>
+  </details>
+</article>
+{% else %}<div class="card">No shifts match.</div>{% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Published Schedule{% endblock %}
+{% block page %}Published Schedule{% endblock %}
+{% block content %}
+<div class="panel row">
+  <div><b>Status:</b> <span class="badge {{ 'good' if published else 'bad' }}">{{ 'PUBLISHED' if published else 'DRAFT' }}</span>
+    <div class="muted" style="margin-top:6px">Manager confirms → publish. Publishing is blocked while conflicts exist ({{ nconf }} now).</div></div>
+  <div class="no-print">
+    {% if published %}<form method="post" action="{{ url_for('unpublish') }}" class="inline"><button class="btn">Move to draft</button></form>
+    {% else %}<form method="post" action="{{ url_for('publish') }}" class="inline"><button class="btn p">✔ Confirm & Publish Schedule</button></form>{% endif %}
+    <button class="btn" onclick="window.print()">🖨 Print</button></div>
+</div>
+{% for d, items in days.items() %}
+<h3 class="day-h">{{ d|fd }}</h3>
+<div class="tw"><table><thead><tr><th>Shift</th><th>Dept</th><th>Time</th><th>Skill</th><th>Assigned</th><th>Status</th></tr></thead>
+{% for i in items %}<tr><td><b>{{ i.s.title }}</b></td><td>{{ i.s.dept }}</td><td class="mono">{{ i.s.start_time }}–{{ i.s.end_time }}</td><td>{{ i.s.skill or 'Any' }}</td>
+<td>{{ i.names|join(', ') or '—' }}</td><td>{% if i.missing > 0 %}<span class="badge bad">SHORT BY {{ i.missing }}</span>{% else %}<span class="badge good">STAFFED</span>{% endif %}</td></tr>{% endfor %}</table></div>
+{% else %}<div class="card">No shifts yet.</div>{% endfor %}
+{% endblock %}

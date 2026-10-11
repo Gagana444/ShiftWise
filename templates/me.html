@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ShiftWise — My Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<style>
+.toasts{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:500;display:flex;flex-direction:column;gap:8px;width:min(560px,92vw)}
+.toast{padding:13px 16px;border-radius:12px;font-weight:600;font-size:13.5px;box-shadow:0 14px 34px -10px rgba(0,0,0,.35);border:1px solid;animation:tin .25s ease;cursor:pointer;display:flex;gap:10px;align-items:flex-start}
+.toast.ok{background:#ecfdf5;color:#065f46;border-color:#a7f3d0}
+.toast.error{background:#fef2f2;color:#991b1b;border-color:#fecaca}
+.toast.out{opacity:0;transform:translateY(-8px);transition:.3s}
+@keyframes tin{from{opacity:0;transform:translateY(-10px) scale(.97)}to{opacity:1;transform:none}}
+.chipx{display:inline-flex;align-items:center;gap:6px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:8px;padding:3px 4px 3px 10px;font-size:12px;font-weight:500}
+.chipx button{border:none;background:#fee2e2;color:#dc2626;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700;padding:2px 7px}
+.chipx button:hover{background:#fecaca}
+.newb{background:#4f46e5;color:#fff;font-size:10px;font-weight:700;padding:1px 7px;border-radius:99px;margin-left:6px}
+.reply{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.reply input{flex:1;min-width:140px;padding:6px 10px;font-size:12.5px}
+.banner{background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;border-radius:12px;padding:12px 16px;margin-bottom:16px;font-weight:600;display:flex;align-items:center;gap:10px}
+</style>
+</head>
+<body class="emp-body">
+<div class="toasts" id="toasts">
+{% with msgs = get_flashed_messages(with_categories=true) %}{% for c, m in msgs %}{% if c != 'mail' %}
+  <div class="toast {{ c }}">{{ '✅' if c == 'ok' else '⚠️' }} <span>{{ m }}</span></div>
+{% endif %}{% endfor %}{% endwith %}
+</div>
+
+<header class="emp-top"><div class="emp-top-in">
+  <div class="brand"><div class="logo">🗓</div><div><b>ShiftWise</b><small>{{ biz }}</small></div></div>
+  <div class="tb-actions"><span class="muted">Signed in as <b style="color:var(--tx)">{{ e.name }}</b></span>
+    <a class="btn s" href="{{ url_for('logout') }}">⎋ Sign out</a></div>
+</div></header>
+
+<div class="emp-wrap">
+  {% if waiting %}
+  <a class="banner" href="#requests">🔔 You have {{ waiting }} request{{ 's' if waiting != 1 }} waiting for your reply. Click to answer →</a>
+  {% endif %}
+
+  <section class="emp-hero">
+    <div class="eyebrow">● MY PORTAL</div>
+    <h1>Hello, {{ e.name.split()[0] }} 👋</h1>
+    <p>{{ e.role }} · {{ e.dept }}</p>
+    <div class="kpis">
+      <div class="kpi"><small>Upcoming shifts</small><b>{{ mine|length }}</b></div>
+      <div class="kpi"><small>Hours scheduled</small><b>{{ total_h }}h</b></div>
+      <div class="kpi"><small>Workload</small><b>{{ fat.label }}</b></div>
+      <div class="kpi"><small>Days off booked</small><b>{{ off|length }}</b></div>
+    </div>
+  </section>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="sect-t"><h3>📅 My schedule</h3><span class="muted">{{ mine|length }} shift(s)</span></div>
+      <div class="tl">
+      {% for m in mine %}
+        <div class="tl-item {% if loop.first %}next{% endif %}">
+          <div class="row"><b>{{ m.s.title }}</b>{% if loop.first %}<span class="badge good">NEXT UP</span>{% else %}<span class="badge">{{ m.h }}h</span>{% endif %}</div>
+          <div class="muted">{{ m.s.shift_date|fd }} · {{ m.s.start_time }}–{{ m.s.end_time }} · {{ m.s.dept }}</div>
+        </div>
+      {% else %}<div class="empty">No shifts assigned yet.</div>{% endfor %}
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h3>🗓 My available days</h3>
+        <div class="muted">Tap to toggle. Your shifts are re-checked automatically.</div>
+        <form method="post" action="{{ url_for('me_update') }}">
+          <div class="daypick">{% for d in DAYS %}<label><input type="checkbox" name="days" value="{{ d }}" {% if d in e.day_list %}checked{% endif %}>{{ d }}</label>{% endfor %}</div>
+          <button class="btn p full" style="margin-top:16px">Save availability</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h3>🚫 Request time off</h3>
+        <div class="muted">Your manager is notified instantly and your shift is reassigned.</div>
+        <form method="post" action="{{ url_for('me_absence') }}" style="display:grid;gap:12px;margin-top:12px">
+          <label class="f">Date<input type="date" name="absent_date" value="{{ today }}" required></label>
+          <label class="f">Reason<select name="reason"><option>Sick Leave</option><option>Casual Leave</option><option>Emergency</option><option>Personal</option></select></label>
+          <button class="btn d full">Submit time off</button>
+        </form>
+        {% if off %}
+        <div class="muted" style="margin-top:14px"><b>My days off</b></div>
+        <div class="chips">{% for d in off %}
+          <form method="post" action="{{ url_for('me_absence_cancel') }}" class="chipx" onsubmit="return confirm('Cancel time off on {{ d|fd }}?')">
+            <input type="hidden" name="absent_date" value="{{ d }}">{{ d|fd }}<button title="Cancel this day off">Cancel</button></form>
+        {% endfor %}</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if mine %}
+  <div class="card">
+    <h3>⇄ Swap a shift</h3>
+    <div class="muted">Pick one of your shifts. Free colleagues can be selected, people on a day off can be asked, and others show why they can't help. They reply, then your manager approves.</div>
+    <form method="post" action="{{ url_for('me_swap') }}" class="mgrid" style="margin-top:14px">
+      <label class="f">My shift
+        <select name="shift_id" id="sw-shift">{% for m in mine %}<option value="{{ m.s.id }}">{{ m.s.title }} ({{ m.s.shift_date }})</option>{% endfor %}</select></label>
+      <label class="f">Swap with
+        <select name="to_emp" id="sw-to"></select></label>
+      <div class="full" id="sw-note"></div>
+      <label class="f full">Note (optional)<input name="note" placeholder="e.g. Family function that day"></label>
+      <button class="btn p full" id="sw-btn">Request swap</button>
+    </form>
+  </div>
+  {% endif %}
+
+  <div class="grid2">
+    <div class="card" id="requests">
+      <h3>⇄ Swap & cover requests</h3>
+      {% for w in swaps_view %}
+      <div class="sw-row" style="flex-wrap:wrap">
+        <div><b>{{ w.shift.title if w.shift }}</b> <span class="muted">{{ w.shift.shift_date|fd if w.shift }}</span>
+          <div class="muted">{% if w.mine %}You → {{ w.to.name if w.to }}{% else %}{{ w.frm.name if w.frm }} → you{% endif %}{% if w.note %} · “{{ w.note }}”{% endif %}</div></div>
+        {% if w.needs_reply %}
+          <div style="display:flex;gap:6px">
+            <form method="post" action="{{ url_for('me_swap_reply', wid=w.id, resp='accept') }}"><button class="btn s p">Accept</button></form>
+            <form method="post" action="{{ url_for('me_swap_reply', wid=w.id, resp='decline') }}"><button class="btn s d">Decline</button></form>
+          </div>
+        {% else %}
+          <span class="badge {{ 'good' if w.status in ('approved','accepted') else ('bad' if w.status in ('rejected','declined') else '') }}">
+            {{ {'pending':'AWAITING REPLY','accepted':'ACCEPTED · MANAGER NEXT','declined':'DECLINED','approved':'APPROVED','rejected':'REJECTED'}[w.status] }}</span>
+        {% endif %}
+      </div>
+      {% else %}<div class="empty">No requests yet.</div>{% endfor %}
+    </div>
+
+    <div class="card">
+      <h3>🔔 Inbox</h3>
+      {% for n in inbox %}
+      <div class="inbox-i"><b>{{ n.title }}</b>{% if not n.is_read %}<span class="newb">NEW</span>{% endif %}
+        <div class="muted">{{ n.body }}</div><div class="muted" style="font-size:11px">{{ n.created }}</div>
+        <form method="post" action="{{ url_for('me_reply') }}" class="reply">
+          <input type="hidden" name="about" value="{{ n.title }}">
+          <input name="text" placeholder="Reply to manager…">
+          <button class="btn s p">Send</button>
+          <button class="btn s lt" name="quick" value="Yes, I can do it." formnovalidate>👍 Yes</button>
+          <button class="btn s" name="quick" value="Sorry, I can't." formnovalidate>👎 Can't</button>
+        </form>
+      </div>
+      {% else %}<div class="empty">No messages.</div>{% endfor %}
+    </div>
+  </div>
+  <div class="emp-foot">ShiftWise · Team CODESPRINT · CBC052</div>
+</div>
+
+<script>
+document.querySelectorAll('.toast').forEach((t, i) => {
+  const hide = () => { t.classList.add('out'); setTimeout(() => t.remove(), 300); };
+  t.onclick = hide; setTimeout(hide, 6000 + i * 800);
+});
+window.scrollTo({top: 0});
+
+const ELIG = {{ elig|tojson }};
+const ASK_URL = "{{ url_for('me_ask_cover') }}";
+const S = document.getElementById('sw-shift'), T = document.getElementById('sw-to'),
+      N = document.getElementById('sw-note'), B = document.getElementById('sw-btn');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const row = (c, right) => `<div class="sw-row" style="padding:6px 10px;margin-top:4px"><span><b>${esc(c.name)}</b> <span class="muted">${esc(c.role)}</span></span>${right}</div>`;
+function fill(){
+  if (!S) return;
+  const l = ELIG[S.value] || [];
+  const ok = l.filter(c => c.ok), ask = l.filter(c => !c.ok && c.ask), no = l.filter(c => !c.ok && !c.ask);
+  T.innerHTML = `<option value="">${ok.length ? 'Select a colleague…' : 'No one is free for this shift'}</option>` +
+    ok.map(c => `<option value="${c.id}">${esc(c.name)} — ${esc(c.role)} (${esc(c.tag)})</option>`).join('');
+  if (ok.length === 1) T.value = ok[0].id;
+  T.required = ok.length > 0;
+  B.disabled = !ok.length; B.style.opacity = ok.length ? 1 : .5;
+  let h = '';
+  if (!ok.length) h += '<div class="flash error" style="margin:0 0 8px">Nobody is free for this shift. You can ask someone on a day off, or pick a different shift.</div>';
+  if (ask.length) h += `<div class="muted" style="margin:6px 0 4px"><b>On a day off, but you can ask them (${ask.length}):</b></div>` +
+    ask.map(c => row(c, `<button type="submit" name="cover_emp" value="${c.id}" formaction="${ASK_URL}" formnovalidate class="btn s lt">Ask to cover</button>`)).join('');
+  if (no.length) h += `<div class="muted" style="margin:8px 0 4px"><b>Can't take this shift (${no.length}):</b></div>` +
+    no.map(c => row(c, `<span class="badge bad">${esc(c.why)}</span>`)).join('');
+  N.innerHTML = h;
+}
+if (S) { S.onchange = fill; fill(); }
+</script>
+<script src="{{ url_for('static', filename='ux.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Staff Directory{% endblock %}
+{% block page %}Staff Directory{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="toolbar" style="margin:0">
+    <input id="q" placeholder="Search staff by name or role..." style="min-width:260px">
+    <select id="dept"><option value="All">Dept: All</option>{% for d in DEPTS %}<option>{{ d }}</option>{% endfor %}</select>
+    <button class="btn s p" data-st="all">All Staff</button><button class="btn s" data-st="active">Active Roster</button>
+    <button class="btn s" data-st="reserve">Reserve Pool</button><button class="btn s" data-st="fatigue">Fatigue Watch</button>
+    <button type="button" class="btn p" style="margin-left:auto" data-open="m-add">＋ Add Personnel</button>
+  </div>
+</div>
+
+<div class="modal" id="m-add"><div class="modal-box">
+  <div class="modal-h"><h3>Add Personnel</h3><button type="button" class="x" data-close>✕</button></div>
+  <form method="post" action="{{ url_for('employee_add') }}" class="mgrid">
+    <label class="f">Name<input name="name" required></label>
+    <label class="f">Role<input name="role" placeholder="e.g. Cashier"></label>
+    <label class="f">Email<input type="email" name="email" placeholder="name@company.com"></label>
+    <label class="f">Department<select name="dept">{% for d in DEPTS %}<option>{{ d }}</option>{% endfor %}</select></label>
+    <label class="f">Max hours / week<input type="number" name="max_hours" value="40"></label>
+    <div class="f full">Skills<div class="checks">{% for k in SKILLS %}<label><input type="checkbox" name="skills" value="{{ k }}">{{ k }}</label>{% endfor %}</div></div>
+    <div class="f full">Available days<div class="checks">{% for d in DAYS %}<label><input type="checkbox" name="days" value="{{ d }}" {% if d not in ['Sat','Sun'] %}checked{% endif %}>{{ d }}</label>{% endfor %}</div></div>
+    <button class="btn p full">Add Employee</button>
+  </form>
+</div></div>
+
+<div class="modal" id="m-alert"><div class="modal-box">
+  <div class="modal-h"><h3>Send alert to <span id="al-name"></span></h3><button type="button" class="x" data-close>✕</button></div>
+  <form method="post" id="alert-form" class="mgrid">
+    <label class="f full">Message<input name="message" placeholder="e.g. Can you cover Friday night shift?" required></label>
+    <div class="f full">Send via<div class="rchips">
+      <label><input type="radio" name="channel" value="app" checked>🔔 In-app</label>
+      <label><input type="radio" name="channel" value="email">✉ Email</label>
+      <label><input type="radio" name="channel" value="both">Both</label></div></div>
+    <button class="btn p full">Send Alert</button>
+  </form>
+</div></div>
+
+<div class="empgrid">
+{% for r in rows %}{% set e = r.e %}{% set f = r.fat %}
+<div class="shift emp" data-name="{{ e.name }} {{ e.role }}" data-dept="{{ e.dept }}" data-status="{{ e.status }}" data-fat="{{ 'high' if f.idx >= 70 else 'ok' }}">
+  <div class="row"><div style="display:flex;align-items:center"><span class="avatar" style="width:46px;height:46px">{{ e.name[0] }}</span><div><h3 style="margin:0;font-size:17px">{{ e.name }}</h3><div style="color:var(--blue);font-weight:600">{{ e.role }}</div><div class="mono muted">{{ e.dept }}</div></div></div>
+    <span class="status-tag {{ e.status }}">{{ e.status|upper }}</span></div>
+  <div class="panel" style="margin:14px 0 0;padding:12px;background:#fafbfd">
+    <div class="wl"><span>Weekly Workload</span><b>{{ f.peak }} / {{ e.max_hours }} hrs / wk</b></div>
+    <div class="bar"><i style="width:{{ [f.idx,100]|min }}%"></i></div>
+    <div class="wl"><span>Fatigue Index</span><b class="{{ f.cls }}-t">{{ f.idx }}% ({{ f.label }})</b></div>
+    <div class="bar {{ f.cls }}"><i style="width:{{ f.idx }}%"></i></div></div>
+  <div class="muted mono" style="margin-top:12px">VERIFIED COMPETENCIES</div>
+  <div class="chips">{% for k in e.skill_list %}<span class="chip">{{ k }}</span>{% else %}<span class="muted">None</span>{% endfor %}</div>
+  <div class="muted mono" style="margin-top:10px">ACTIVE CERTIFICATIONS</div>
+  <div class="chips">{% for c in e.cert_list %}<span class="chip cert {% if c.expiry < today %}expired{% endif %}">{{ c.name }} ({{ c.expiry }})</span>{% else %}<span class="muted">None</span>{% endfor %}</div>
+  <div class="muted mono" style="margin-top:10px">AVAILABLE: {{ e.day_list|join(', ') or '—' }}</div>
+  <div class="muted mono" style="margin-top:4px">✉ {{ e.email or 'no email' }}</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px">
+    <button type="button" class="btn" data-open="m-alert" data-form="alert-form" data-action="{{ url_for('employee_alert', eid=e.id) }}" data-label-target="al-name" data-label="{{ e.name }}">💬 Send Alert</button>
+    <a class="btn lt" href="{{ url_for('training') }}" style="justify-content:center">🎓 Train</a>
+  </div>
+  <details><summary>Edit availability & skills</summary>
+    <form method="post" action="{{ url_for('employee_update', eid=e.id) }}" style="display:grid;gap:10px;margin-top:10px">
+      <div class="f">Skills<div class="checks">{% for k in SKILLS %}<label><input type="checkbox" name="skills" value="{{ k }}" {% if k in e.skill_list %}checked{% endif %}>{{ k }}</label>{% endfor %}</div></div>
+      <div class="f">Available days<div class="checks">{% for d in DAYS %}<label><input type="checkbox" name="days" value="{{ d }}" {% if d in e.day_list %}checked{% endif %}>{{ d }}</label>{% endfor %}</div></div>
+      <label class="f">Email<input type="email" name="email" value="{{ e.email }}"></label>
+      <label class="f">Certs (Name:YYYY-MM-DD;Name:YYYY-MM-DD)<input name="certs" value="{{ e.certs }}"></label>
+      <label class="f">Max hours / week<input type="number" name="max_hours" value="{{ e.max_hours }}"></label>
+      <label class="f">Status<select name="status">{% for st in ['active','reserve','leave'] %}<option {% if st == e.status %}selected{% endif %}>{{ st }}</option>{% endfor %}</select></label>
+      <button class="btn p s">Save</button></form>
+    <form method="post" action="{{ url_for('employee_delete', eid=e.id) }}" onsubmit="return confirm('Remove employee?')" style="margin-top:8px"><button class="btn d s">Remove employee</button></form>
+  </details>
+</div>
+{% endfor %}
+</div>
+<script>
+const q=document.getElementById('q'),dp=document.getElementById('dept');let st='all';
+function f(){document.querySelectorAll('.emp').forEach(c=>{const ok=c.dataset.name.toLowerCase().includes(q.value.toLowerCase())&&(dp.value==='All'||c.dataset.dept===dp.value)&&(st==='all'||c.dataset.status===st||(st==='fatigue'&&c.dataset.fat==='high'));c.style.display=ok?'':'none'})}
+q.oninput=f;dp.onchange=f;
+document.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{st=b.dataset.st;document.querySelectorAll('[data-st]').forEach(x=>x.classList.remove('p'));b.classList.add('p');f()});
+</script>
+{% endblock %}
